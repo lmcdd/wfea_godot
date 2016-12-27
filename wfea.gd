@@ -293,8 +293,11 @@ class Grid:
 		
 	func isUpdated(o, x, y, counter): # o is an objective, x, y and counter are ints
 		var index = self.objectives.find(o) #index(o)
-		var objData = self.grid_data[x][y].objectiveData[index]
-
+		var objData
+		if x < Globals.get('Global/gx') and y < Globals.get('Global/gy'):
+			objData = self.grid_data[x][y].objectiveData[index]
+		else:
+			return false
 		return objData.lastUpdated == counter
 		
 	func getType(x, y):
@@ -427,7 +430,7 @@ func drawGrid(obj, grid, counter):
 
 func _ready():
 	randomize()
-	mGrid = Grid.new(20, 15)
+	mGrid = Grid.new(Globals.get('Global/gx'),  Globals.get('Global/gy'))
 	mouse = Objective.new(30)
 	mouse.x = 10
 	mouse.y = 7
