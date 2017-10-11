@@ -1,31 +1,19 @@
 extends Node2D
-#var DEBUG
-#DEBUG = False
-#var DIAGONAL = 1.412
-#var GRASS_BLOCK = 0
-#var WALL_BLOCK = 101
 
-# Sole class needed for use of the wavefront expansion algorithm.
-# Each frame where any objectives move or the map changes call
-# updateObjectivesPF(), and for each WFEAObject whose velocity is due
-# to be updated call getNextMovementVector"""
 class WFEASearch:
-	var grid
+	var grid 
 	var objectives
-	#grid = the Grid this search is in, objs = the objectives in a list
+
 	func _init(grd, objs):
 		self.grid = grd
 		self.objectives = objs
-	# Adds an objective to the WFEA search. Linear increase in time/frame per
-	# objective,depending on the radius of the objective
 	
 	func addObjective(obj):
 		self.objectives.append(obj)
 	
-	# Removes an objective from the WFEA search
 	func removeObjective(obj):
 		self.objectives.remove(obj)
-	# Updates the performance fields of each objective
+
 	func updateObjectivesPF(counter):
 		for i in range(self.objectives.size()):
 			var o = self.objectives[i]
@@ -35,9 +23,8 @@ class WFEASearch:
 			var rad = 0
 			self.grid.setDistanceValue(o, ox, oy, 0, counter)
 			
-			var previousExpansion = [[o.x, o.y]] # The files that were marked in the
-			# last loop
-			var currentExpansion = [] # The files that we are marking in this loop
+			var previousExpansion = [[o.x, o.y]]
+			var currentExpansion = [] 
 			var n = true
 			while rad in range(radius):
 				var lenMarked = previousExpansion.size()
@@ -54,56 +41,35 @@ class WFEASearch:
 								self.grid.setDistanceValue(o, points[i][0], points[i][1], resistance, counter)
 								currentExpansion.append([points[i][0], points[i][1]])
 				rad = rad + 1
-				#print("End of radius", rad, "previousExpansion:", str(previousExpansion),
-				#	"currentExpansion:", str(currentExpansion))
 				previousExpansion = []
 				for temp in range(currentExpansion.size()):
 					previousExpansion.append(currentExpansion[temp])
 				currentExpansion = []
 				
-
-	# Checks the location of the WFEA object and returns a vector for the
-	# next location that the WFEA object should go. Normalized to [-1, 1]
-	# Objective and a WFEAObject
 	func getNextMovementVector(objective, obj, counter): 
-		#if DEBUG:
-		#	print("Checking next movement vector")
 		var xBlock = int(obj.x / 32)
 		var yBlock = int(obj.y / 32)
-		#if DEBUG:
-		#	print("Object location:", xBlock, yBlock)
 
 		if xBlock == obj.nextDesiredBlockX and yBlock == obj.nextDesiredBlockY:
 			obj.nextDesiredBlockX = -1
 			obj.nextDesiredBlockY = -1
-		#	if DEBUG:
-		#		print("Made it to the objective")
 		elif counter - obj.lastUpdated > 50:
 			obj.nextDesiredBlockX = -1
 			obj.nextDesiredBlockY = -1
-		#	if DEBUG:
-		#		print("Probably stuck")
 		else:
-			obj.lastUpdated = counter #deepcopy(counter)
+			obj.lastUpdated = counter
 		
 		if obj.nextDesiredBlockX >= 0 and obj.nextDesiredBlockY >= 0:
-		#	if DEBUG:
-		#		print("Next location already set")
 			var goalX = obj.nextDesiredBlockX * 32 + 8
 			var goalY = obj.nextDesiredBlockY * 32 + 8
-		#	if DEBUG:
-		#		print("Trying to get to", goalX, goalY, "from", obj.x, obj.y)
 			var dir = self.getDirectionVector(obj.x, obj.y, goalX, goalY)
 			var dirX = dir[0]
 			var dirY = dir[1]
-		#	if DEBUG:
-		#		print("Direction to go in:", dirX, dirY)
 			return [dirX, dirY]
 			
 		var adjacent = self.getAdjacent(objective, xBlock, yBlock, counter)
 		var lowest = self.grid.getDistanceValue(objective, xBlock, yBlock)
-		#if DEBUG:
-		#	print("Currently situated on a block with distance", lowest)
+		
 		var locationLowest = null
 		for l in range(adjacent.size()):
 			var loc = adjacent[l]
@@ -111,32 +77,23 @@ class WFEASearch:
 				if self.grid.getDistanceValue(objective, loc[0], loc[1]) < lowest:
 					lowest = self.grid.getDistanceValue(objective, loc[0], loc[1])
 					locationLowest = [loc[0], loc[1]]
+					
 		if locationLowest == null:
-		#	if DEBUG:
-		#		print("No adjacent blocks with a lower value, staying still")
 			return [0, 0]
 		else:
-		#	if DEBUG:
-		#		print("Found the next desired block", str(locationLowest))
 			obj.nextDesiredBlockX = locationLowest[0]
 			obj.nextDesiredBlockY = locationLowest[1]
 			var goalX = obj.nextDesiredBlockX * 32 + 8
 			var goalY = obj.nextDesiredBlockY * 32 + 8
-		#	if DEBUG:
-		#		print("Trying to get to", goalX, goalY, "from", obj.x, obj.y)
 			var dir = self.getDirectionVector(obj.x, obj.y, goalX, goalY)
 			var dirX = dir[0]
 			var dirY = dir[1]
-		#	if DEBUG:
-		#		print("Direction to go in:", dirX, dirY)
-
 			return [dirX, dirY]
 			
 	func getDirectionVector(x1, y1, x2, y2):
 		var dX = x2 - x1 # delta x
 		var dY = y2 - y1 # delta y
 		var distance = abs(dX) + abs(dY)
-
 		if distance == 0:
 			return [0, 0]
 		return [dX / distance, dY / distance]
@@ -145,22 +102,20 @@ class WFEASearch:
 		var tp #!!!!!!!!!!!!!!!!!!!
 		if x >= 20 or y >= 15 or x < 0 or y < 0:
 			return -1
-		if self.grid.getType(x, y) != Globals.get('Global/WALL_BLOCK')  and self.grid.getPassingValue(x, y) != null:
+		if self.grid.getType(x, y) != global.WALL_BLOCK  and self.grid.getPassingValue(x, y) != null:
 			tp = self.grid.getPassingValue(x, y)
 			if ox != x and oy != y:
-				tp = tp * Globals.get('Global/DIAGONAL')  
-		elif self.grid.getType(x, y) == Globals.get('Global/WALL_BLOCK') and self.grid.getPassingValue(x, y) != null:
+				tp = tp * global.DIAGONAL  
+		elif self.grid.getType(x, y) == global.WALL_BLOCK and self.grid.getPassingValue(x, y) != null:
 			return -1
 		else:
-			#print("The apocolypse has occurred") 
 			return -1
 		var tpn = tp + self.grid.getDistanceValue(obj, ox, oy)
 		return tpn
 
 	func getAdjacent(o, x, y, counter): 
 		var points = []
-		
-		points.append([x, y-1]) # Order is important, diagonals come after
+		points.append([x, y-1]) 
 		points.append([x-1, y]) 
 		points.append([x+1, y])
 		points.append([x, y+1])
@@ -182,12 +137,10 @@ class WFEASearch:
 				continue
 			var passingValue = self.grid.getPassingValue(points[i][0], points[i][1])
 			if points[i][0] < 0 or points[i][1] < 0 or points[i][0] >= self.grid.width or points[i][1] >= self.grid.height or passingValue == null or passingValue < 0 or x < 0 or y < 0 or x >= self.grid.width or y >= self.grid.height:
-				points.remove(i)#points.pop(i)
+				points.remove(i)
 				i = i - 1
 		return points
 
-# A basic objective with an x location, y location, and maximum
-# radius of relevance
 class Objective:
 	var radius
 	var x
@@ -196,18 +149,6 @@ class Objective:
 		self.radius = rad
 		self.x = 0
 		self.y = 0
-
-# Holds necessary data for the WFEASearch
-#class WFEAObject:
-#	func _init():
-#		self.x = 0
-#		self.y = 0
-#		self.width = 16
-#		self.height = 16
-#		self.lastUpdated = 0
-#		self.nextDesiredBlockX = -1
-#		self.nextDesiredBlockY = -1
-#		self.priority = 0
 
 class Block:
 	var mType 
@@ -223,7 +164,6 @@ class ObjectiveData:
 		self.effortToObjective = 0
 		self.lastUpdated = 0
 		
-
 class Grid:
 	var width 
 	var height 
@@ -239,11 +179,11 @@ class Grid:
 			for y in range(height):
 				var newType = rand_range(0, 101)
 				if newType <= 12:
-					self.grid_data[x].append(Block.new(Globals.get('Global/WALL_BLOCK'), []))
+					self.grid_data[x].append(Block.new(global.WALL_BLOCK, []))
 				else:
-					self.grid_data[x].append(Block.new(Globals.get('Global/GRASS_BLOCK'), []))
+					self.grid_data[x].append(Block.new(global.GRASS_BLOCK, []))
 	
-	func addObjective(o): # o is an Objective
+	func addObjective(o): 
 		self.objectives.append(o)
 		var index = self.objectives.size() - 1
 
@@ -251,50 +191,43 @@ class Grid:
 			for y in range(self.height):
 				self.grid_data[x][y].objectiveData.append(ObjectiveData.new())
 
-	func removeObjective(o): # o is an Objective
-		var index = self.objectives.find(o) #index
-		self.objectives.remove(index) #pop
+	func removeObjective(o): 
+		var index = self.objectives.find(o)
+		self.objectives.remove(index)
 
 		for x in range(self.width):
 			for y in range(self.height):
 				self.grid_data[x][y].objectiveData.remove(index)#pop
 
-	func getPassingValue(x, y): # x is an int, y is an int
+	func getPassingValue(x, y): 
 		if x < 0 or y < 0 or x >= self.width or y >= self.height:
 			return -2
 		var block = self.grid_data[x][y]
 
-		if(block.mType == Globals.get('Global/GRASS_BLOCK')):
+		if(block.mType == global.GRASS_BLOCK):
 			return 10
-		elif(block.mType == Globals.get('Global/WALL_BLOCK')):
+		elif(block.mType == global.WALL_BLOCK):
 			return -1
 		else:
 			return -2
 		
-	#func getDistanceValue(o, x, y, counter): # o is an objective, x, y, and counter are ints
-	#	index = self.objectives.index(o)
-	#	objData = self.grid[x][y].objectiveData[index]
-	#	if objData.lastUpdated != counter:
-	#		return -1
-	#	return objData.effortToObjective
-		
 	func getDistanceValue(o, x, y):
-		var index = self.objectives.find(o)#index(o)
+		var index = self.objectives.find(o)
 		var objData = self.grid_data[x][y].objectiveData[index]
 		return objData.effortToObjective
 		
-	func setDistanceValue(o, x, y, value, counter): # o is an objective, x, y, and counter are ints
+	func setDistanceValue(o, x, y, value, counter): 
 		if x < 0 or y < 0 or x >= self.width or y >= self.height:
 			return -9999999
-		var index = self.objectives.find(o) #index(o)
+		var index = self.objectives.find(o) 
 		var objData = self.grid_data[x][y].objectiveData[index] # errors
 		objData.lastUpdated = counter
 		objData.effortToObjective = value
 		
-	func isUpdated(o, x, y, counter): # o is an objective, x, y and counter are ints
-		var index = self.objectives.find(o) #index(o)
+	func isUpdated(o, x, y, counter):
+		var index = self.objectives.find(o) 
 		var objData
-		if x < Globals.get('Global/gx') and y < Globals.get('Global/gy'):
+		if x < global.gx and y < global.gy:
 			objData = self.grid_data[x][y].objectiveData[index]
 		else:
 			return false
@@ -325,7 +258,7 @@ var stalkerSquares
 var counter 
 var temp 
 
-class MouseFollowingSquare: #wfea.WFEAObject
+class MouseFollowingSquare: 
 	var x = 0
 	var y = 0
 	var width = 16
@@ -366,18 +299,18 @@ class MouseFollowingSquare: #wfea.WFEAObject
 		self.xVelocity = self.xVelocity * 3
 		self.yVelocity = self.yVelocity * 3
 		var nextX = self.x + self.xVelocity
-		if notPassable(grid, nextX, self.y): #self.notPassable
+		if notPassable(grid, nextX, self.y): 
 			self.yVelocity = self.yVelocity + 0.5
 			self.xVelocity = 0
 
-		var nextY = self.y + self.yVelocity #self.notPassable
+		var nextY = self.y + self.yVelocity 
 		if notPassable(grid, self.x, nextY):
 			self.yVelocity = 0
 			self.xVelocity = self.xVelocity + 0.5
 
 		nextX = self.x + self.xVelocity
 		nextY = self.y + self.yVelocity
-		if not notPassable(grid, nextX, nextY):#self.notPassable
+		if not notPassable(grid, nextX, nextY):
 			self.x = nextX
 			self.y = nextY
 			
@@ -402,9 +335,9 @@ func getHeat(resistance):
 func drawGrid(obj, grid, counter):
 	for x in range(grid.width):
 		for y in range(grid.height):
-			if(grid.getType(x, y) == Globals.get('Global/GRASS_BLOCK')):
+			if(grid.getType(x, y) == global.GRASS_BLOCK):
 				pass
-			elif(grid.getType(x, y) == Globals.get('Global/WALL_BLOCK')):
+			elif(grid.getType(x, y) == global.WALL_BLOCK):
 				draw_rect(Rect2(x * 32, y * 32, 32, 32), WALL_COLOR)
 						
 	for x in range(grid.width):
@@ -418,19 +351,11 @@ func drawGrid(obj, grid, counter):
 				
 				draw_rect(Rect2(x * 32, y * 32, 32, 32), Color(1, 0, 0,opacity/255.0)) #(x * 32, y * 32
 				draw_string(font, Vector2(x * 32, (y * 32) + 16),str(int(grid.getDistanceValue(obj, x, y))))
-				#var label = render(str(int(grid.getDistanceValue(obj, x, y))), 1, Color(255,255,0))
-				#blit(label, Vector2(x * 32, y * 32))
-				
-#var transSurface = pygame.Surface((32, 32))
-#func drawTransparentRect(xLoc, yLoc, red, green, blue, opacity): # Draws a 32x32 square of the specified color and opacity
-	#transSurface.set_alpha(opacity)
-	#transSurface.fill((red, green, blue))
-	#screen.blit(transSurface, (xLoc, yLoc))
 
 
 func _ready():
 	randomize()
-	mGrid = Grid.new(Globals.get('Global/gx'),  Globals.get('Global/gy'))
+	mGrid = Grid.new(global.gx, global.gy)
 	mouse = Objective.new(30)
 	mouse.x = 10
 	mouse.y = 7
@@ -460,13 +385,12 @@ func _draw():
 			stalkerSquares[sqInd] = spawnSquare(mGrid)
 	counter = counter + 1
 
-
 func _process(delta):
 	update()
 	
 func _input(event):
-	if event.type == InputEvent.MOUSE_MOTION:
-		temp = get_global_mouse_pos()
+	if event is InputEventMouseMotion:
+		temp = get_global_mouse_position()
 		mouse.x = int(temp.x / 32)
 		mouse.y = int(temp.y / 32)
 		var currentType = mGrid.getType(mouse.x, mouse.y)
